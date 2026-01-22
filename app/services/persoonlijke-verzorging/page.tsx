@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { getTranslation, Language } from '@/lib/translations';
 import MotionWrapper from '@/components/MotionWrapper';
 import CTAButton from '@/components/CTAButton';
@@ -26,9 +27,17 @@ export default function PersoonlijkeVerzorgingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <MotionWrapper>
               <div className="relative h-96 w-full rounded-2xl overflow-hidden shadow-2xl">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-200 to-secondary-200 flex items-center justify-center">
-                  <span className="text-8xl">🛁</span>
-                </div>
+                <Image
+                  src="/images/services/persoonlijke-verzorging.jpg"
+                  alt={service.hero.title}
+                  fill
+                  className="object-cover"
+                  priority
+                  quality={90}
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+                {/* Subtle overlay for better text contrast if needed */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary-900/10 via-transparent to-secondary-900/10"></div>
               </div>
             </MotionWrapper>
             

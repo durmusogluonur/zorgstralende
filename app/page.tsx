@@ -11,15 +11,22 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 
 export default function Home() {
   const [lang, setLang] = useState<Language>('nl');
+  const [isMounted, setIsMounted] = useState(false);
   const t = getTranslation(lang);
   const heroRef = useRef<HTMLElement>(null);
+  
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"]
   });
   
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
+  // Keep opacity high for a brighter, more harmonious look
+  const opacity = useTransform(scrollYProgress, [0, 1], [1, 0.85]);
 
   const services = [
     {
@@ -49,7 +56,7 @@ export default function Home() {
         {/* Background Image with Parallax Effect */}
         <motion.div
           className="absolute inset-0 z-0"
-          style={{ y, opacity }}
+          style={isMounted ? { y, opacity } : { y: "0%", opacity: 1 }}
           initial={{ scale: 1.1, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 1.5, ease: "easeOut" }}
@@ -63,8 +70,8 @@ export default function Home() {
             quality={90}
             sizes="100vw"
           />
-          {/* Overlay for better text readability */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary-900/70 via-primary-800/60 to-secondary-900/70"></div>
+          {/* Overlay for better text readability - lighter and more harmonious */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary-700/40 via-primary-600/35 to-secondary-700/40"></div>
           {/* Subtle animated gradient overlay */}
           <motion.div
             className="absolute inset-0 bg-gradient-to-br from-primary-50/20 via-transparent to-secondary-50/20"
