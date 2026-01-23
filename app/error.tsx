@@ -10,14 +10,20 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    console.error('Page Error:', error);
+    console.error('Error Stack:', error.stack);
   }, [error]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-red-50">
       <div className="text-center max-w-2xl mx-auto px-4">
         <h1 className="text-4xl font-bold text-red-600 mb-4">Bir Hata Oluştu</h1>
-        <p className="text-gray-700 mb-8">{error.message}</p>
+        <p className="text-gray-700 mb-4">{error.message}</p>
+        {error.stack && (
+          <pre className="text-xs text-gray-600 mb-8 overflow-auto text-left bg-white p-4 rounded">
+            {error.stack}
+          </pre>
+        )}
         <button
           onClick={() => reset()}
           className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"

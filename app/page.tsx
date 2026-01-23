@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { getTranslation, Language } from '@/lib/translations';
 import MotionWrapper from '@/components/MotionWrapper';
@@ -10,32 +10,79 @@ import CTASection from '@/components/CTASection';
 import { motion } from 'framer-motion';
 
 export default function Home() {
-  const [lang, setLang] = useState<Language>('nl');
-  const t = getTranslation(lang);
+  const [lang] = useState<Language>('nl');
+  
+  // Safely get translations with error handling
+  const t = useMemo(() => {
+    try {
+      return getTranslation(lang);
+    } catch (error) {
+      console.error('Translation error:', error);
+      // Return fallback translations
+      return getTranslation('nl');
+    }
+  }, [lang]);
 
-  const services = [
-    {
-      title: t.services.persoonlijkeVerzorging.title,
-      description: t.services.persoonlijkeVerzorging.description,
-      href: '/services/persoonlijke-verzorging',
-      image: '/images/services/persoonlijke-verzorging-preview.jpg',
-      icon: '🛁',
-    },
-    {
-      title: t.services.begeleiding.title,
-      description: t.services.begeleiding.description,
-      href: '/services/begeleiding',
-      image: '/images/services/begeleiding-preview.jpg',
-      icon: '🤝',
-    },
-    {
-      title: t.services.huishoudelijkeHulp.title,
-      description: t.services.huishoudelijkeHulp.description,
-      href: '/services/huishoudelijke-hulp',
-      image: '/images/services/huishoudelijke-hulp-preview.jpg',
-      icon: '🏠',
-    },
-  ];
+  // Safely get services with error handling
+  const services: Array<{
+    title: string;
+    description: string;
+    href: string;
+    image: string;
+    icon: string;
+  }> = useMemo(() => {
+    try {
+      return [
+        {
+          title: t?.services?.persoonlijkeVerzorging?.title || 'Persoonlijke Verzorging',
+          description: t?.services?.persoonlijkeVerzorging?.description || '',
+          href: '/services/persoonlijke-verzorging',
+          image: '/images/services/persoonlijke-verzorging-preview.jpg',
+          icon: '🛁',
+        },
+        {
+          title: t?.services?.begeleiding?.title || 'Begeleiding',
+          description: t?.services?.begeleiding?.description || '',
+          href: '/services/begeleiding',
+          image: '/images/services/begeleiding-preview.jpg',
+          icon: '🤝',
+        },
+        {
+          title: t?.services?.huishoudelijkeHulp?.title || 'Huishoudelijke Hulp',
+          description: t?.services?.huishoudelijkeHulp?.description || '',
+          href: '/services/huishoudelijke-hulp',
+          image: '/images/services/huishoudelijke-hulp-preview.jpg',
+          icon: '🏠',
+        },
+      ];
+    } catch (error) {
+      console.error('Services error:', error);
+      // Return fallback services
+      return [
+        {
+          title: 'Persoonlijke Verzorging',
+          description: '',
+          href: '/services/persoonlijke-verzorging',
+          image: '/images/services/persoonlijke-verzorging-preview.jpg',
+          icon: '🛁',
+        },
+        {
+          title: 'Begeleiding',
+          description: '',
+          href: '/services/begeleiding',
+          image: '/images/services/begeleiding-preview.jpg',
+          icon: '🤝',
+        },
+        {
+          title: 'Huishoudelijke Hulp',
+          description: '',
+          href: '/services/huishoudelijke-hulp',
+          image: '/images/services/huishoudelijke-hulp-preview.jpg',
+          icon: '🏠',
+        },
+      ];
+    }
+  }, [t]);
 
   return (
     <div className="min-h-screen">
@@ -101,7 +148,7 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              {t.home.hero.title}
+              {t.home?.hero?.title || 'Stralendezorg'}
             </motion.h1>
             <motion.p
               className="text-2xl md:text-3xl text-white mb-4 font-semibold drop-shadow-lg"
@@ -109,7 +156,7 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
             >
-              {t.home.hero.subtitle}
+              {t.home?.hero?.subtitle || 'Persoonlijke thuiszorg met een warm hart'}
             </motion.p>
             <motion.p
               className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto drop-shadow-md"
@@ -117,7 +164,7 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
             >
-              {t.home.hero.description}
+              {t.home?.hero?.description || 'Wij zijn een kleinschalige thuiszorg bedrijf die de cliënt en de verzorgende graag in verbintenis wilt brengen.'}
             </motion.p>
             <motion.div
               className="flex flex-col sm:flex-row gap-4 justify-center"
@@ -126,10 +173,10 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.8 }}
             >
               <CTAButton href="/contact" variant="primary" className="text-lg px-8 py-4 shadow-2xl">
-                {t.home.hero.cta}
+                {t.home?.hero?.cta || 'Neem Contact Op'}
               </CTAButton>
               <CTAButton href="/about" variant="secondary" className="text-lg px-8 py-4 shadow-2xl bg-white/20 backdrop-blur-sm border-2 border-white text-white hover:bg-white/30">
-                {t.home.hero.ctaSecondary}
+                {t.home?.hero?.ctaSecondary || 'Meer Informatie'}
               </CTAButton>
             </motion.div>
           </MotionWrapper>
@@ -141,10 +188,10 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <MotionWrapper className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              {t.home.services.title}
+              {t.home?.services?.title || 'Onze Diensten'}
             </h2>
             <p className="text-xl text-gray-600">
-              {t.home.services.subtitle}
+              {t.home?.services?.subtitle || 'Wat wij voor u kunnen betekenen'}
             </p>
           </MotionWrapper>
 
@@ -158,7 +205,7 @@ export default function Home() {
                 image={service.image}
                 icon={service.icon}
                 delay={index * 0.2}
-                ctaText={t.services.overview.cta}
+                ctaText={t.services?.overview?.cta || 'Meer Informatie'}
               />
             ))}
           </div>
@@ -171,24 +218,30 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <MotionWrapper>
               <div className="relative h-96 w-full rounded-2xl overflow-hidden shadow-2xl">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-200 to-secondary-200 flex items-center justify-center">
-                  <span className="text-8xl">🏥</span>
-                </div>
+                <Image
+                  src="/images/about-preview.jpg"
+                  alt="Stralendezorg - Persoonlijke zorg"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  quality={90}
+                  priority
+                />
               </div>
             </MotionWrapper>
             
             <MotionWrapper delay={0.2}>
               <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                {t.home.about.title}
+                {t.home?.about?.title || 'Over Stralendezorg'}
               </h2>
               <p className="text-xl text-gray-600 mb-6">
-                {t.home.about.subtitle}
+                {t.home?.about?.subtitle || 'Persoonlijke zorg met aandacht'}
               </p>
               <p className="text-lg text-gray-700 mb-8">
-                {t.home.about.description}
+                {t.home?.about?.description || 'Wij begrijpen dat cliënten behoefte hebben aan vaste gezichten, verzorgers en begeleiders.'}
               </p>
               <CTAButton href="/about" variant="primary">
-                {t.home.about.cta}
+                {t.home?.about?.cta || 'Meer Over Ons'}
               </CTAButton>
             </MotionWrapper>
           </div>
@@ -197,10 +250,10 @@ export default function Home() {
 
       {/* CTA Section */}
       <CTASection
-        title={t.home.cta.title}
-        description={t.home.cta.description}
+        title={t.home?.cta?.title || 'Klaar om te beginnen?'}
+        description={t.home?.cta?.description || 'Neem vandaag nog contact met ons op voor een vrijblijvend gesprek.'}
         primaryButton={{
-          text: t.home.cta.button,
+          text: t.home?.cta?.button || 'Contact Opnemen',
           href: '/contact',
         }}
       />
