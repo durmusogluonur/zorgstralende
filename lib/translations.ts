@@ -147,6 +147,8 @@ export const translations = {
         subtitle: 'Wij helpen u graag verder',
       },
       form: {
+        title: 'Neem Contact Op',
+        subtitle: 'Vul het formulier in en wij nemen zo snel mogelijk contact met u op.',
         name: 'Naam',
         email: 'E-mail',
         phone: 'Telefoon',
@@ -155,6 +157,7 @@ export const translations = {
         sending: 'Verzenden...',
         success: 'Bedankt! Uw bericht is verzonden.',
         error: 'Er is een fout opgetreden. Probeer het later opnieuw.',
+        privacyText: 'Ik ga akkoord met het privacybeleid en geef toestemming voor de verwerking van mijn gegevens.',
       },
       info: {
         title: 'Contactgegevens',
@@ -325,6 +328,8 @@ export const translations = {
         subtitle: 'We are happy to help you',
       },
       form: {
+        title: 'Neem Contact Op',
+        subtitle: 'Vul het formulier in en wij nemen zo snel mogelijk contact met u op.',
         name: 'Name',
         email: 'Email',
         phone: 'Phone',
@@ -333,6 +338,7 @@ export const translations = {
         sending: 'Sending...',
         success: 'Thank you! Your message has been sent.',
         error: 'An error occurred. Please try again later.',
+        privacyText: 'I agree to the privacy policy and consent to the processing of my data.',
       },
       info: {
         title: 'Contact Information',

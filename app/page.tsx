@@ -1,50 +1,38 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import { getTranslation, Language } from '@/lib/translations';
 import MotionWrapper from '@/components/MotionWrapper';
 import ServiceCard from '@/components/ServiceCard';
 import CTAButton from '@/components/CTAButton';
 import CTASection from '@/components/CTASection';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export default function Home() {
   const [lang, setLang] = useState<Language>('nl');
-  const [isMounted, setIsMounted] = useState(false);
   const t = getTranslation(lang);
-  const heroRef = useRef<HTMLElement>(null);
-  
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"]
-  });
-  
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
-  // Keep opacity high for a brighter, more harmonious look
-  const opacity = useTransform(scrollYProgress, [0, 1], [1, 0.85]);
 
   const services = [
     {
       title: t.services.persoonlijkeVerzorging.title,
       description: t.services.persoonlijkeVerzorging.description,
       href: '/services/persoonlijke-verzorging',
+      image: '/images/services/persoonlijke-verzorging-preview.jpg',
       icon: '🛁',
     },
     {
       title: t.services.begeleiding.title,
       description: t.services.begeleiding.description,
       href: '/services/begeleiding',
+      image: '/images/services/begeleiding-preview.jpg',
       icon: '🤝',
     },
     {
       title: t.services.huishoudelijkeHulp.title,
       description: t.services.huishoudelijkeHulp.description,
       href: '/services/huishoudelijke-hulp',
+      image: '/images/services/huishoudelijke-hulp-preview.jpg',
       icon: '🏠',
     },
   ];
@@ -52,11 +40,10 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section ref={heroRef} className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        {/* Background Image with Parallax Effect */}
+      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+        {/* Background Image */}
         <motion.div
           className="absolute inset-0 z-0"
-          style={isMounted ? { y, opacity } : { y: "0%", opacity: 1 }}
           initial={{ scale: 1.1, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 1.5, ease: "easeOut" }}
@@ -73,17 +60,7 @@ export default function Home() {
           {/* Overlay for better text readability - lighter and more harmonious */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary-700/40 via-primary-600/35 to-secondary-700/40"></div>
           {/* Subtle animated gradient overlay */}
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-br from-primary-50/20 via-transparent to-secondary-50/20"
-            animate={{
-              backgroundPosition: ["0% 0%", "100% 100%"],
-            }}
-            transition={{
-              duration: 10,
-              repeat: Infinity,
-              repeatType: "reverse",
-            }}
-          />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary-50/20 via-transparent to-secondary-50/20"></div>
         </motion.div>
         
         {/* Decorative blur elements */}
@@ -178,6 +155,7 @@ export default function Home() {
                 title={service.title}
                 description={service.description}
                 href={service.href}
+                image={service.image}
                 icon={service.icon}
                 delay={index * 0.2}
                 ctaText={t.services.overview.cta}
