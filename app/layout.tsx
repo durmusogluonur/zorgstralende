@@ -1,15 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
-import { SpeedInsights } from "@vercel/speed-insights/next";
-
-const inter = Inter({ 
-  subsets: ["latin"],
-  display: 'swap',
-  variable: '--font-inter',
-});
 
 export const metadata: Metadata = {
   title: "Stralendezorg - Persoonlijke Thuiszorg",
@@ -23,11 +15,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="nl">
-      <body className={`${inter.variable} ${inter.className}`}>
+      <body className="font-sans antialiased">
         <Navigation />
         <main className="pt-20">{children}</main>
         <Footer />
-        <SpeedInsights />
       </body>
     </html>
   );
