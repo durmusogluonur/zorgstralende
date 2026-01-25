@@ -22,13 +22,20 @@ setInterval(() => {
 
 // Verify reCAPTCHA token
 async function verifyRecaptcha(token: string): Promise<boolean> {
-  if (!token || !process.env.RECAPTCHA_SECRET_KEY) {
-    // In development, allow requests without token if secret is not configured
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('reCAPTCHA secret not configured, skipping verification in development');
-      return true;
+  // If reCAPTCHA is not configured, allow the request (for development/testing)
+  if (!process.env.RECAPTCHA_SECRET_KEY) {
+    console.warn('reCAPTCHA secret not configured, skipping verification');
+    return true;
+  }
+
+  // If token is not provided but secret is configured, reject in production
+  if (!token) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('reCAPTCHA token missing in production');
+      return false;
     }
-    return false;
+    // Allow in development
+    return true;
   }
 
   try {

@@ -103,8 +103,11 @@ export default function ContactForm({ lang }: ContactFormProps) {
     setSubmitStatus('idle');
 
     try {
-      // Get reCAPTCHA token
-      const recaptchaToken = await getRecaptchaToken();
+      // Get reCAPTCHA token (if configured)
+      let recaptchaToken = '';
+      if (recaptchaSiteKey) {
+        recaptchaToken = await getRecaptchaToken();
+      }
 
       const response = await fetch('/api/contact', {
         method: 'POST',
