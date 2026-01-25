@@ -52,8 +52,21 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-semibold mb-4">Contact</h4>
             <ul className="space-y-2 text-gray-400">
-              <li>Email: info@stralendezorg.nl</li>
-              <li>Telefoon: +31 XX XXX XXXX</li>
+              <li>
+                <span className="font-semibold text-gray-300">Adres:</span><br />
+                Middellaan 33G<br />
+                5102PB Dongen
+              </li>
+              <li>
+                <span className="font-semibold text-gray-300">Telefoon:</span><br />
+                <a href="tel:+31850603854" className="hover:text-primary-400 transition-colors">
+                  +31 85 060 3854
+                </a>
+              </li>
+              <li>
+                <span className="font-semibold text-gray-300">Email:</span><br />
+                info@stralendezorg.nl
+              </li>
             </ul>
           </div>
         </div>

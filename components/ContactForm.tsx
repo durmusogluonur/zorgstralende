@@ -1,11 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getTranslation, Language } from '@/lib/translations';
+
+// Declare grecaptcha for TypeScript
+declare global {
+  interface Window {
+    grecaptcha: {
+      ready: (callback: () => void) => void;
+      execute: (siteKey: string, options: { action: string }) => Promise<string>;
+    };
+  }
+}
 
 const contactSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -27,7 +37,31 @@ export default function ContactForm({ lang }: ContactFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
   const t = getTranslation(lang);
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
+
+  // Load Google reCAPTCHA script
+  useEffect(() => {
+    if (!recaptchaSiteKey) {
+      console.warn('reCAPTCHA site key not configured');
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setRecaptchaLoaded(true);
+    document.head.appendChild(script);
+
+    return () => {
+      const existingScript = document.querySelector(`script[src*="recaptcha"]`);
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
+  }, [recaptchaSiteKey]);
 
   const {
     register,
@@ -39,17 +73,48 @@ export default function ContactForm({ lang }: ContactFormProps) {
     resolver: zodResolver(contactSchema),
   });
 
+  const getRecaptchaToken = async (): Promise<string> => {
+    if (!recaptchaSiteKey || !recaptchaLoaded || typeof window === 'undefined' || !window.grecaptcha) {
+      return '';
+    }
+
+    try {
+      return await new Promise((resolve) => {
+        window.grecaptcha.ready(async () => {
+          try {
+            const token = await window.grecaptcha.execute(recaptchaSiteKey, {
+              action: 'contact_form',
+            });
+            resolve(token);
+          } catch (error) {
+            console.error('reCAPTCHA execution error:', error);
+            resolve('');
+          }
+        });
+      });
+    } catch (error) {
+      console.error('reCAPTCHA error:', error);
+      return '';
+    }
+  };
+
   const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true);
     setSubmitStatus('idle');
 
     try {
+      // Get reCAPTCHA token
+      const recaptchaToken = await getRecaptchaToken();
+
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          recaptchaToken,
+        }),
       });
 
       if (response.ok) {
@@ -57,9 +122,12 @@ export default function ContactForm({ lang }: ContactFormProps) {
         reset();
         setTimeout(() => setSubmitStatus('idle'), 5000);
       } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Form submission error:', errorData);
         setSubmitStatus('error');
       }
     } catch (error) {
+      console.error('Form submission error:', error);
       setSubmitStatus('error');
     } finally {
       setIsSubmitting(false);

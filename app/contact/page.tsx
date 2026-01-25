@@ -49,9 +49,9 @@ export default function ContactPage() {
                       {t.contact.info.address}
                     </h3>
                     <p className="text-gray-600">
-                      {lang === 'nl' 
-                        ? 'Nederland' 
-                        : 'The Netherlands'}
+                      Middellaan 33G<br />
+                      5102PB Dongen<br />
+                      Nederland
                     </p>
                   </div>
 
@@ -60,7 +60,9 @@ export default function ContactPage() {
                       {t.contact.info.phone}
                     </h3>
                     <p className="text-gray-600">
-                      +31 XX XXX XXXX
+                      <a href="tel:+31850603854" className="hover:text-primary-600 transition-colors">
+                        +31 85 060 3854
+                      </a>
                     </p>
                   </div>
 
