@@ -1,6 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
+// Initialize Google Cloud reCAPTCHA Enterprise client (lazy loaded)
+// This will only be used if @google-cloud/recaptcha-enterprise is installed
+let recaptchaClient: any = null;
+let recaptchaModuleAvailable = false;
+
+const getRecaptchaClient = async () => {
+  if (!process.env.GOOGLE_CLOUD_PROJECT_ID) {
+    return null;
+  }
+
+  if (!recaptchaClient && !recaptchaModuleAvailable) {
+    try {
+      const { RecaptchaEnterpriseServiceClient } = await import('@google-cloud/recaptcha-enterprise');
+      recaptchaClient = new RecaptchaEnterpriseServiceClient();
+      recaptchaModuleAvailable = true;
+    } catch (error: any) {
+      if (error.code === 'MODULE_NOT_FOUND') {
+        console.warn('@google-cloud/recaptcha-enterprise not installed. Install with: npm install @google-cloud/recaptcha-enterprise');
+        recaptchaModuleAvailable = false;
+      } else {
+        console.error('Failed to initialize reCAPTCHA Enterprise client:', error);
+      }
+      return null;
+    }
+  }
+  return recaptchaClient;
+};
+
 // Initialize Resend (will use RESEND_API_KEY from environment variables)
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -36,11 +64,11 @@ if (typeof setInterval !== 'undefined') {
   }, 60000); // Clean up every minute
 }
 
-// Verify reCAPTCHA token
-async function verifyRecaptcha(token: string): Promise<boolean> {
+// Verify reCAPTCHA Enterprise token using Google Cloud SDK
+async function verifyRecaptcha(token: string, action: string = 'contact_form'): Promise<boolean> {
   // If reCAPTCHA is not configured, allow the request (for development/testing)
-  if (!process.env.RECAPTCHA_SECRET_KEY) {
-    console.warn('reCAPTCHA secret not configured, skipping verification');
+  if (!process.env.RECAPTCHA_SECRET_KEY && !process.env.GOOGLE_CLOUD_PROJECT_ID) {
+    console.warn('reCAPTCHA Enterprise not configured, skipping verification');
     return true;
   }
 
@@ -54,23 +82,93 @@ async function verifyRecaptcha(token: string): Promise<boolean> {
     return true;
   }
 
+  // Use Google Cloud Enterprise SDK if project ID is configured
+  if (process.env.GOOGLE_CLOUD_PROJECT_ID) {
+    try {
+      const client = await getRecaptchaClient();
+      if (!client) {
+        console.warn('reCAPTCHA Enterprise client not available, falling back to basic verification');
+        return await verifyRecaptchaBasic(token);
+      }
+
+      const projectPath = client.projectPath(process.env.GOOGLE_CLOUD_PROJECT_ID);
+      const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '6LdTI1YsAAAAAHRh4YqhdNp0A8WGNEyNaICeb9LP';
+
+      // Build the assessment request
+      const request = {
+        assessment: {
+          event: {
+            token: token,
+            siteKey: recaptchaSiteKey,
+          },
+        },
+        parent: projectPath,
+      };
+
+      const [response] = await client.createAssessment(request);
+
+      // Check if the token is valid
+      if (!response.tokenProperties?.valid) {
+        console.error(`reCAPTCHA Enterprise token invalid: ${response.tokenProperties?.invalidReason}`);
+        return false;
+      }
+
+      // Check if the expected action was executed
+      if (response.tokenProperties.action !== action) {
+        console.error(`reCAPTCHA Enterprise action mismatch. Expected: ${action}, Got: ${response.tokenProperties.action}`);
+        return false;
+      }
+
+      // Get the risk score
+      const score = response.riskAnalysis?.score || 0;
+      const threshold = parseFloat(process.env.RECAPTCHA_SCORE_THRESHOLD || '0.5');
+
+      if (score < threshold) {
+        console.warn(`reCAPTCHA Enterprise score too low: ${score} (threshold: ${threshold})`);
+        // Log reasons for low score
+        if (response.riskAnalysis?.reasons) {
+          response.riskAnalysis.reasons.forEach((reason: string) => {
+            console.warn(`Risk reason: ${reason}`);
+          });
+        }
+        return false;
+      }
+
+      console.log(`reCAPTCHA Enterprise verification successful. Score: ${score}`);
+      return true;
+    } catch (error: any) {
+      console.error('reCAPTCHA Enterprise verification error:', error);
+      // Fallback to basic verification if Enterprise SDK fails
+      return await verifyRecaptchaBasic(token);
+    }
+  }
+
+  // Fallback to basic verification
+  return await verifyRecaptchaBasic(token);
+}
+
+// Basic reCAPTCHA verification (fallback)
+async function verifyRecaptchaBasic(token: string): Promise<boolean> {
+  if (!process.env.RECAPTCHA_SECRET_KEY) {
+    return true; // Allow if not configured
+  }
+
   try {
     const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      // URL encode to prevent injection
       body: new URLSearchParams({
-        secret: process.env.RECAPTCHA_SECRET_KEY || '',
+        secret: process.env.RECAPTCHA_SECRET_KEY,
         response: token,
       }).toString(),
     });
 
     const data = await response.json();
-    return data.success === true && data.score >= 0.5; // Score threshold (0.0 to 1.0)
+    return data.success === true && (data.score || 0.5) >= 0.5;
   } catch (error) {
-    console.error('reCAPTCHA verification error:', error);
+    console.error('reCAPTCHA basic verification error:', error);
     return false;
   }
 }
@@ -188,8 +286,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify reCAPTCHA
-    const recaptchaValid = await verifyRecaptcha(recaptchaToken || '');
+    // Verify reCAPTCHA Enterprise
+    const recaptchaValid = await verifyRecaptcha(recaptchaToken || '', 'contact_form');
     if (!recaptchaValid) {
       return NextResponse.json(
         { error: 'reCAPTCHA verification failed. Please try again.' },
