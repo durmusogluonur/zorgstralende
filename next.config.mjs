@@ -4,6 +4,17 @@ const nextConfig = {
     domains: [],
     remotePatterns: [],
   },
+  // Webpack config to handle optional dependencies
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Make @google-cloud/recaptcha-enterprise optional for server-side
+      config.externals = config.externals || [];
+      config.externals.push({
+        '@google-cloud/recaptcha-enterprise': 'commonjs @google-cloud/recaptcha-enterprise',
+      });
+    }
+    return config;
+  },
   // Security headers
   async headers() {
     return [

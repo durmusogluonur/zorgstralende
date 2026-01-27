@@ -11,22 +11,40 @@ const getRecaptchaClient = async () => {
     return null;
   }
 
-  if (!recaptchaClient && !recaptchaModuleAvailable) {
-    try {
-      const { RecaptchaEnterpriseServiceClient } = await import('@google-cloud/recaptcha-enterprise');
-      recaptchaClient = new RecaptchaEnterpriseServiceClient();
-      recaptchaModuleAvailable = true;
-    } catch (error: any) {
-      if (error.code === 'MODULE_NOT_FOUND') {
+  if (recaptchaClient) {
+    return recaptchaClient;
+  }
+
+  if (recaptchaModuleAvailable === false) {
+    // Module was already tried and failed, don't try again
+    return null;
+  }
+
+  try {
+    // Dynamic import with error handling
+    // @ts-ignore - Module may not be installed, handled gracefully
+    const recaptchaModule = await import('@google-cloud/recaptcha-enterprise').catch((error: any) => {
+      if (error.code === 'MODULE_NOT_FOUND' || error.message?.includes('Cannot find module')) {
         console.warn('@google-cloud/recaptcha-enterprise not installed. Install with: npm install @google-cloud/recaptcha-enterprise');
         recaptchaModuleAvailable = false;
-      } else {
-        console.error('Failed to initialize reCAPTCHA Enterprise client:', error);
+        return null;
       }
+      throw error;
+    });
+
+    if (!recaptchaModule) {
       return null;
     }
+
+    const { RecaptchaEnterpriseServiceClient } = recaptchaModule;
+    recaptchaClient = new RecaptchaEnterpriseServiceClient();
+    recaptchaModuleAvailable = true;
+    return recaptchaClient;
+  } catch (error: any) {
+    console.error('Failed to initialize reCAPTCHA Enterprise client:', error);
+    recaptchaModuleAvailable = false;
+    return null;
   }
-  return recaptchaClient;
 };
 
 // Initialize Resend (will use RESEND_API_KEY from environment variables)
@@ -64,15 +82,25 @@ if (typeof setInterval !== 'undefined') {
   }, 60000); // Clean up every minute
 }
 
-// Verify reCAPTCHA Enterprise token using Google Cloud SDK
-async function verifyRecaptcha(token: string, action: string = 'contact_form'): Promise<boolean> {
+/**
+ * Create an assessment to analyze the risk of a UI action using reCAPTCHA Enterprise.
+ * Based on Google Cloud reCAPTCHA Enterprise SDK.
+ * 
+ * @param token - The generated token obtained from the client
+ * @param recaptchaAction - Action name corresponding to the token (default: 'contact_form')
+ * @returns Promise<boolean> - true if assessment passes, false otherwise
+ */
+async function createAssessment(
+  token: string,
+  recaptchaAction: string = 'contact_form'
+): Promise<boolean> {
   // If reCAPTCHA is not configured, allow the request (for development/testing)
-  if (!process.env.RECAPTCHA_SECRET_KEY && !process.env.GOOGLE_CLOUD_PROJECT_ID) {
-    console.warn('reCAPTCHA Enterprise not configured, skipping verification');
+  if (!process.env.GOOGLE_CLOUD_PROJECT_ID) {
+    console.warn('reCAPTCHA Enterprise not configured (GOOGLE_CLOUD_PROJECT_ID missing), skipping verification');
     return true;
   }
 
-  // If token is not provided but secret is configured, reject in production
+  // If token is not provided, reject in production
   if (!token) {
     if (process.env.NODE_ENV === 'production') {
       console.warn('reCAPTCHA token missing in production');
@@ -82,67 +110,81 @@ async function verifyRecaptcha(token: string, action: string = 'contact_form'): 
     return true;
   }
 
-  // Use Google Cloud Enterprise SDK if project ID is configured
-  if (process.env.GOOGLE_CLOUD_PROJECT_ID) {
-    try {
-      const client = await getRecaptchaClient();
-      if (!client) {
-        console.warn('reCAPTCHA Enterprise client not available, falling back to basic verification');
-        return await verifyRecaptchaBasic(token);
-      }
-
-      const projectPath = client.projectPath(process.env.GOOGLE_CLOUD_PROJECT_ID);
-      const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '6LdTI1YsAAAAAHRh4YqhdNp0A8WGNEyNaICeb9LP';
-
-      // Build the assessment request
-      const request = {
-        assessment: {
-          event: {
-            token: token,
-            siteKey: recaptchaSiteKey,
-          },
-        },
-        parent: projectPath,
-      };
-
-      const [response] = await client.createAssessment(request);
-
-      // Check if the token is valid
-      if (!response.tokenProperties?.valid) {
-        console.error(`reCAPTCHA Enterprise token invalid: ${response.tokenProperties?.invalidReason}`);
-        return false;
-      }
-
-      // Check if the expected action was executed
-      if (response.tokenProperties.action !== action) {
-        console.error(`reCAPTCHA Enterprise action mismatch. Expected: ${action}, Got: ${response.tokenProperties.action}`);
-        return false;
-      }
-
-      // Get the risk score
-      const score = response.riskAnalysis?.score || 0;
-      const threshold = parseFloat(process.env.RECAPTCHA_SCORE_THRESHOLD || '0.5');
-
-      if (score < threshold) {
-        console.warn(`reCAPTCHA Enterprise score too low: ${score} (threshold: ${threshold})`);
-        // Log reasons for low score
-        if (response.riskAnalysis?.reasons) {
-          response.riskAnalysis.reasons.forEach((reason: string) => {
-            console.warn(`Risk reason: ${reason}`);
-          });
-        }
-        return false;
-      }
-
-      console.log(`reCAPTCHA Enterprise verification successful. Score: ${score}`);
-      return true;
-    } catch (error: any) {
-      console.error('reCAPTCHA Enterprise verification error:', error);
-      // Fallback to basic verification if Enterprise SDK fails
+  try {
+    const client = await getRecaptchaClient();
+    if (!client) {
+      console.warn('reCAPTCHA Enterprise client not available, falling back to basic verification');
       return await verifyRecaptchaBasic(token);
     }
-  }
 
+    const projectID = process.env.GOOGLE_CLOUD_PROJECT_ID;
+    const recaptchaKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '6LdTI1YsAAAAAHRh4YqhdNp0A8WGNEyNaICeb9LP';
+
+    // Create the reCAPTCHA client and get project path
+    const projectPath = client.projectPath(projectID);
+
+    // Build the assessment request
+    const request = {
+      assessment: {
+        event: {
+          token: token,
+          siteKey: recaptchaKey,
+        },
+      },
+      parent: projectPath,
+    };
+
+    const [response] = await client.createAssessment(request);
+
+    // Check if the token is valid
+    if (!response.tokenProperties?.valid) {
+      console.error(`The CreateAssessment call failed because the token was: ${response.tokenProperties?.invalidReason}`);
+      return false;
+    }
+
+    // Check if the expected action was executed
+    // The `action` property is set by user client in the grecaptcha.enterprise.execute() method
+    if (response.tokenProperties.action !== recaptchaAction) {
+      console.error(`The action attribute in your reCAPTCHA tag does not match the action you are expecting to score. Expected: ${recaptchaAction}, Got: ${response.tokenProperties.action}`);
+      return false;
+    }
+
+    // Get the risk score and the reason(s)
+    // For more information on interpreting the assessment, see:
+    // https://cloud.google.com/recaptcha/docs/interpret-assessment
+    const score = response.riskAnalysis?.score || 0;
+    const threshold = parseFloat(process.env.RECAPTCHA_SCORE_THRESHOLD || '0.5');
+
+    console.log(`The reCAPTCHA Enterprise score is: ${score}`);
+
+    // Log risk reasons if available
+    if (response.riskAnalysis?.reasons && response.riskAnalysis.reasons.length > 0) {
+      response.riskAnalysis.reasons.forEach((reason: string) => {
+        console.log(`Risk reason: ${reason}`);
+      });
+    }
+
+    // Check if score meets threshold
+    if (score < threshold) {
+      console.warn(`reCAPTCHA Enterprise score ${score} is below threshold ${threshold}`);
+      return false;
+    }
+
+    return true;
+  } catch (error: any) {
+    console.error('reCAPTCHA Enterprise verification error:', error);
+    // Fallback to basic verification if Enterprise SDK fails
+    return await verifyRecaptchaBasic(token);
+  }
+}
+
+// Verify reCAPTCHA token (wrapper function)
+async function verifyRecaptcha(token: string, action: string = 'contact_form'): Promise<boolean> {
+  // Try Enterprise first, fallback to basic
+  if (process.env.GOOGLE_CLOUD_PROJECT_ID) {
+    return await createAssessment(token, action);
+  }
+  
   // Fallback to basic verification
   return await verifyRecaptchaBasic(token);
 }
