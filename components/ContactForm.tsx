@@ -48,11 +48,29 @@ export default function ContactForm({ lang }: ContactFormProps) {
       return;
     }
 
+    // Check if we're in a valid environment for reCAPTCHA
+    const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
+    const isLocalhost = currentHost === 'localhost' || currentHost === '127.0.0.1';
+    const isVercel = currentHost.includes('vercel.app');
+    
+    // Only load reCAPTCHA in production or if explicitly enabled
+    if (process.env.NODE_ENV === 'development' && !isLocalhost) {
+      console.warn('reCAPTCHA disabled in development mode');
+      return;
+    }
+
     const script = document.createElement('script');
     script.src = `https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}`;
     script.async = true;
     script.defer = true;
-    script.onload = () => setRecaptchaLoaded(true);
+    script.onload = () => {
+      setRecaptchaLoaded(true);
+      console.log('reCAPTCHA loaded successfully');
+    };
+    script.onerror = () => {
+      console.error('reCAPTCHA script failed to load. Check domain configuration in Google reCAPTCHA console.');
+      setRecaptchaLoaded(false);
+    };
     document.head.appendChild(script);
 
     return () => {
@@ -75,6 +93,9 @@ export default function ContactForm({ lang }: ContactFormProps) {
 
   const getRecaptchaToken = async (): Promise<string> => {
     if (!recaptchaSiteKey || !recaptchaLoaded || typeof window === 'undefined' || !window.grecaptcha) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('reCAPTCHA not loaded - skipping in development');
+      }
       return '';
     }
 
@@ -86,14 +107,25 @@ export default function ContactForm({ lang }: ContactFormProps) {
               action: 'contact_form',
             });
             resolve(token);
-          } catch (error) {
-            console.error('reCAPTCHA execution error:', error);
+          } catch (error: any) {
+            // Handle specific reCAPTCHA errors
+            if (error?.message?.includes('Invalid site key') || error?.message?.includes('geçersiz alan')) {
+              console.error('reCAPTCHA Domain Error: Site key is not registered for this domain. Please add the domain to Google reCAPTCHA console.');
+              console.error('Current domain:', window.location.hostname);
+              console.error('Add this domain to reCAPTCHA settings:', window.location.hostname);
+            } else {
+              console.error('reCAPTCHA execution error:', error);
+            }
             resolve('');
           }
         });
       });
-    } catch (error) {
-      console.error('reCAPTCHA error:', error);
+    } catch (error: any) {
+      if (error?.message?.includes('Invalid site key') || error?.message?.includes('geçersiz alan')) {
+        console.error('reCAPTCHA Domain Error: Site key domain mismatch. Check Google reCAPTCHA console settings.');
+      } else {
+        console.error('reCAPTCHA error:', error);
+      }
       return '';
     }
   };
