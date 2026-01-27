@@ -7,12 +7,14 @@ import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getTranslation, Language } from '@/lib/translations';
 
-// Declare grecaptcha for TypeScript
+// Declare grecaptcha Enterprise for TypeScript
 declare global {
   interface Window {
     grecaptcha: {
-      ready: (callback: () => void) => void;
-      execute: (siteKey: string, options: { action: string }) => Promise<string>;
+      enterprise: {
+        ready: (callback: () => void) => void;
+        execute: (siteKey: string, options: { action: string }) => Promise<string>;
+      };
     };
   }
 }
@@ -41,44 +43,25 @@ export default function ContactForm({ lang }: ContactFormProps) {
   const t = getTranslation(lang);
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
 
-  // Load Google reCAPTCHA script
+  // Check if reCAPTCHA Enterprise is loaded (script is loaded in layout.tsx)
   useEffect(() => {
     if (!recaptchaSiteKey) {
-      console.warn('reCAPTCHA site key not configured');
       return;
     }
 
-    // Check if we're in a valid environment for reCAPTCHA
-    const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
-    const isLocalhost = currentHost === 'localhost' || currentHost === '127.0.0.1';
-    const isVercel = currentHost.includes('vercel.app');
-    
-    // Only load reCAPTCHA in production or if explicitly enabled
-    if (process.env.NODE_ENV === 'development' && !isLocalhost) {
-      console.warn('reCAPTCHA disabled in development mode');
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = `https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      setRecaptchaLoaded(true);
-      console.log('reCAPTCHA loaded successfully');
-    };
-    script.onerror = () => {
-      console.error('reCAPTCHA script failed to load. Check domain configuration in Google reCAPTCHA console.');
-      setRecaptchaLoaded(false);
-    };
-    document.head.appendChild(script);
-
-    return () => {
-      const existingScript = document.querySelector(`script[src*="recaptcha"]`);
-      if (existingScript) {
-        existingScript.remove();
+    // Check if reCAPTCHA Enterprise is already loaded
+    const checkRecaptcha = () => {
+      if (typeof window !== 'undefined' && window.grecaptcha?.enterprise) {
+        setRecaptchaLoaded(true);
+        console.log('reCAPTCHA Enterprise is ready');
+      } else {
+        // Retry after a short delay if not loaded yet
+        setTimeout(checkRecaptcha, 100);
       }
     };
+
+    // Start checking after component mounts
+    checkRecaptcha();
   }, [recaptchaSiteKey]);
 
   const {
@@ -92,29 +75,29 @@ export default function ContactForm({ lang }: ContactFormProps) {
   });
 
   const getRecaptchaToken = async (): Promise<string> => {
-    if (!recaptchaSiteKey || !recaptchaLoaded || typeof window === 'undefined' || !window.grecaptcha) {
+    if (!recaptchaSiteKey || !recaptchaLoaded || typeof window === 'undefined' || !window.grecaptcha?.enterprise) {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('reCAPTCHA not loaded - skipping in development');
+        console.warn('reCAPTCHA Enterprise not loaded - skipping in development');
       }
       return '';
     }
 
     try {
       return await new Promise((resolve) => {
-        window.grecaptcha.ready(async () => {
+        window.grecaptcha.enterprise.ready(async () => {
           try {
-            const token = await window.grecaptcha.execute(recaptchaSiteKey, {
+            const token = await window.grecaptcha.enterprise.execute(recaptchaSiteKey, {
               action: 'contact_form',
             });
             resolve(token);
           } catch (error: any) {
             // Handle specific reCAPTCHA errors
             if (error?.message?.includes('Invalid site key') || error?.message?.includes('geçersiz alan')) {
-              console.error('reCAPTCHA Domain Error: Site key is not registered for this domain. Please add the domain to Google reCAPTCHA console.');
+              console.error('reCAPTCHA Enterprise Domain Error: Site key is not registered for this domain. Please add the domain to Google reCAPTCHA console.');
               console.error('Current domain:', window.location.hostname);
               console.error('Add this domain to reCAPTCHA settings:', window.location.hostname);
             } else {
-              console.error('reCAPTCHA execution error:', error);
+              console.error('reCAPTCHA Enterprise execution error:', error);
             }
             resolve('');
           }
@@ -122,9 +105,9 @@ export default function ContactForm({ lang }: ContactFormProps) {
       });
     } catch (error: any) {
       if (error?.message?.includes('Invalid site key') || error?.message?.includes('geçersiz alan')) {
-        console.error('reCAPTCHA Domain Error: Site key domain mismatch. Check Google reCAPTCHA console settings.');
+        console.error('reCAPTCHA Enterprise Domain Error: Site key domain mismatch. Check Google reCAPTCHA console settings.');
       } else {
-        console.error('reCAPTCHA error:', error);
+        console.error('reCAPTCHA Enterprise error:', error);
       }
       return '';
     }
