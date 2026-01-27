@@ -4,6 +4,8 @@ const nextConfig = {
     domains: [],
     remotePatterns: [],
   },
+  // Output mode for Hostinger (standalone recommended for Node.js hosting)
+  // Uncomment if needed: output: 'standalone',
   // Webpack config to handle optional dependencies
   webpack: (config, { isServer }) => {
     if (isServer) {

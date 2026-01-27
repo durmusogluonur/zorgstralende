@@ -401,13 +401,29 @@ export async function POST(request: NextRequest) {
           `,
           replyTo: sanitizedEmail,
         });
-      } catch (emailError) {
+      } catch (emailError: any) {
         console.error('Resend email error:', emailError);
+        console.error('Error details:', {
+          message: emailError?.message,
+          status: emailError?.status,
+          name: emailError?.name,
+        });
+        // Log to help debug Hostinger deployment issues
+        if (process.env.NODE_ENV === 'production') {
+          console.error('RESEND_API_KEY configured:', !!process.env.RESEND_API_KEY);
+          console.error('Resend client initialized:', !!resend);
+        }
         // Continue even if email fails - log the submission
       }
     } else {
-      // If Resend is not configured, just log (for development)
-      console.log('Resend not configured. Contact form submission:', { name, email, phone, message });
+      // If Resend is not configured, log detailed info for debugging
+      console.warn('Resend not configured. Contact form submission logged:', { 
+        name: sanitizedName, 
+        email: sanitizedEmail, 
+        phone: sanitizedPhone,
+        messageLength: sanitizedMessage.length 
+      });
+      console.warn('RESEND_API_KEY environment variable:', process.env.RESEND_API_KEY ? 'SET' : 'NOT SET');
     }
 
     return NextResponse.json(
