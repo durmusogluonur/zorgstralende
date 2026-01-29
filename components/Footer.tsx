@@ -46,6 +46,21 @@ export default function Footer() {
                   {t.footer.links.contact}
                 </Link>
               </li>
+              <li>
+                <a href="/documents/klachtenreglement.pdf" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
+                  {t.footer.links.klachtenreglement}
+                </a>
+              </li>
+              <li>
+                <a href="/documents/privacy-verklaring.pdf" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
+                  {t.footer.links.privacyVerklaring}
+                </a>
+              </li>
+              <li>
+                <a href="/documents/algemene-voorwaarden.pdf" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
+                  {t.footer.links.algemeneVoorwaarden}
+                </a>
+              </li>
             </ul>
           </div>
 
