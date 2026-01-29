@@ -1,12 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   images: {
     domains: [],
     remotePatterns: [],
   },
-  // Output mode for Hostinger (standalone recommended for Node.js hosting)
-  // Uncomment if needed: output: 'standalone',
-  // Webpack config to handle optional dependencies
+  compress: true,
+  poweredByHeader: false,
   webpack: (config, { isServer }) => {
     if (isServer) {
       // Make @google-cloud/recaptcha-enterprise optional for server-side
@@ -17,9 +17,17 @@ const nextConfig = {
     }
     return config;
   },
-  // Security headers
   async headers() {
     return [
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
       {
         source: '/:path*',
         headers: [

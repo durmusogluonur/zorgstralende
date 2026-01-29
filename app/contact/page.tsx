@@ -1,11 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { getTranslation, Language } from '@/lib/translations';
 import MotionWrapper from '@/components/MotionWrapper';
-import ContactForm from '@/components/ContactForm';
 import CTAButton from '@/components/CTAButton';
 import CTASection from '@/components/CTASection';
+
+const ContactForm = dynamic(() => import('@/components/ContactForm'), {
+  ssr: false,
+  loading: () => (
+    <div className="animate-pulse rounded-xl bg-gray-100 h-96 w-full" aria-hidden />
+  ),
+});
 
 export default function ContactPage() {
   const [lang, setLang] = useState<Language>('nl');

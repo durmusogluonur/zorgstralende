@@ -22,9 +22,7 @@ export default function RootLayout({
         {recaptchaSiteKey && (
           <Script
             src={`https://www.google.com/recaptcha/enterprise.js?render=${recaptchaSiteKey}`}
-            strategy="afterInteractive"
-            async
-            defer
+            strategy="lazyOnload"
           />
         )}
       </head>

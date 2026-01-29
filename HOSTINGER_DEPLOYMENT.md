@@ -1,5 +1,19 @@
 # Hostinger Deployment Rehberi
 
+## GitHub'dan Otomatik Çekme Sonrası (Önemli – Beyaz Ekran Önleme)
+
+Hostinger sadece `git pull` yapıyorsa **build üretilmez**; tarayıcı eski chunk dosyalarını arayıp 404 alır ve beyaz ekran oluşur. Her pull sonrası **mutlaka** sunucuda build alın ve Node uygulamasını yeniden başlatın.
+
+1. **SSH veya Node.js Manager “Run script”** ile proje klasöründe:
+   ```bash
+   npm ci
+   npm run build
+   ```
+2. Veya repo’daki script’i çalıştırın: `bash deploy.sh`
+3. **Node.js uygulamasını Hostinger panelden yeniden başlatın** (Node.js Manager → Restart).
+
+**Standalone mod:** Proje `output: 'standalone'` kullanıyor. Çalıştırırken `node .next/standalone/server.js` kullanın; `public` ve `.next/static` klasörlerini standalone çıktı içine veya doğru yere kopyalayın (Next.js dokümantasyonuna bakın). Hostinger Node.js “Start command” örneği: `node .next/standalone/server.js` (ve gerekliyse `NODE_ENV=production`).
+
 ## Hostinger'de Next.js Deploy
 
 Hostinger'de Next.js projesi deploy etmek için özel yapılandırma gerekir.
@@ -62,29 +76,9 @@ Hostinger'de log dosyalarını kontrol edin:
 
 ## Hostinger Özel Yapılandırmalar
 
-### .htaccess (Eğer Apache kullanıyorsa)
+### .htaccess (Sadece statik export için)
 
-Hostinger'de Next.js için `.htaccess` dosyası gerekebilir:
-
-```apache
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ /index.html [L]
-```
-
-### next.config.mjs Güncellemesi
-
-Hostinger için output mode kontrol edin:
-
-```javascript
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  output: 'standalone', // Hostinger için önerilen
-  // veya
-  // output: 'export', // Static export için
-};
-```
+Next.js’i **Node ile** çalıştırıyorsanız tüm istekler Node’a gitmeli; `/_next/static/*` ve `*.js` isteklerini index.html’e yönlendiren bir rewrite **kullanmayın** (beyaz ekran / chunk 404’e yol açar). Statik export kullanıyorsanız rewrite kullanabilirsiniz.
 
 ## Debug Adımları
 
