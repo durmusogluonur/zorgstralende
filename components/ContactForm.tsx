@@ -38,6 +38,7 @@ interface ContactFormProps {
 export default function ContactForm({ lang }: ContactFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [submitErrorMessage, setSubmitErrorMessage] = useState<string>('');
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
   const t = getTranslation(lang);
@@ -116,9 +117,9 @@ export default function ContactForm({ lang }: ContactFormProps) {
   const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true);
     setSubmitStatus('idle');
+    setSubmitErrorMessage('');
 
     try {
-      // Get reCAPTCHA token (if configured)
       let recaptchaToken = '';
       if (recaptchaSiteKey) {
         recaptchaToken = await getRecaptchaToken();
@@ -126,26 +127,22 @@ export default function ContactForm({ lang }: ContactFormProps) {
 
       const response = await fetch('/api/contact', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...data,
-          recaptchaToken,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, recaptchaToken }),
       });
+
+      const dataRes = await response.json().catch(() => ({}));
 
       if (response.ok) {
         setSubmitStatus('success');
         reset();
         setTimeout(() => setSubmitStatus('idle'), 5000);
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Form submission error:', errorData);
+        setSubmitErrorMessage(typeof dataRes?.error === 'string' ? dataRes.error : '');
         setSubmitStatus('error');
       }
-    } catch (error) {
-      console.error('Form submission error:', error);
+    } catch {
+      setSubmitErrorMessage('');
       setSubmitStatus('error');
     } finally {
       setIsSubmitting(false);
@@ -474,15 +471,13 @@ export default function ContactForm({ lang }: ContactFormProps) {
               className="p-4 bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-300 rounded-xl text-red-800 shadow-lg"
             >
               <div className="flex items-center gap-3">
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 200 }}
-                  className="text-2xl"
-                >
-                  ❌
-                </motion.span>
-                <p className="font-semibold">{t.contact.form.error}</p>
+                <span className="text-2xl">❌</span>
+                <div>
+                  <p className="font-semibold">{t.contact.form.error}</p>
+                  {submitErrorMessage && (
+                    <p className="mt-1 text-sm opacity-90">{submitErrorMessage}</p>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}

@@ -328,13 +328,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify reCAPTCHA Enterprise
-    const recaptchaValid = await verifyRecaptcha(recaptchaToken || '', 'contact_form');
-    if (!recaptchaValid) {
-      return NextResponse.json(
-        { error: 'reCAPTCHA verification failed. Please try again.' },
-        { status: 400 }
-      );
+    // Verify reCAPTCHA only when configured (skip when no keys = allow form to work)
+    const hasRecaptchaConfig = !!(process.env.RECAPTCHA_SECRET_KEY || process.env.GOOGLE_CLOUD_PROJECT_ID);
+    if (hasRecaptchaConfig) {
+      const recaptchaValid = await verifyRecaptcha(recaptchaToken || '', 'contact_form');
+      if (!recaptchaValid) {
+        return NextResponse.json(
+          { error: 'reCAPTCHA verification failed. Please try again.' },
+          { status: 400 }
+        );
+      }
     }
 
     // Sanitize inputs
